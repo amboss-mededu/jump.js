@@ -5,6 +5,7 @@ const jumper = () => {
   // no variables are created during a jump, preventing memory leaks
 
   let element         // element to scroll to                   (node)
+  let container       // wrapper element                        (node)
 
   let start           // where scroll starts                    (px)
   let stop            // where scroll stops                     (px)
@@ -26,13 +27,26 @@ const jumper = () => {
   // scroll position helper
 
   function location () {
-    return window.scrollY || window.pageYOffset
+    return container.scrollY || container.pageYOffset || container.scrollTop
   }
 
   // element offset helper
 
   function top (element) {
-    return element.getBoundingClientRect().top + start
+    const elementTop = element.getBoundingClientRect().top
+    const containerTop = container.getBoundingClientRect
+        ? container.getBoundingClientRect().top
+        : 0
+    return elementTop - containerTop + start
+  }
+
+  // Higher order function to handle scrolling
+  // in both global viewport (window) or a custom
+  // container
+  function scrollTo (offset) {
+    container && container.scrollTo
+      ? window.scrollTo(0, offset) // Window object
+      : container.scrollTop = offset // Node container
   }
 
   // rAF loop helper
@@ -50,7 +64,7 @@ const jumper = () => {
     next = easing(timeElapsed, start, distance, duration)
 
     // scroll to it
-    window.scrollTo(0, next)
+    scrollTo(next)
 
     // check progress
     timeElapsed < duration
@@ -62,7 +76,7 @@ const jumper = () => {
 
   function done () {
     // account for rAF time rounding inaccuracies
-    window.scrollTo(0, start + distance)
+    scrollTo(start + distance)
 
     // if scrolling to an element, and accessibility is enabled
     if (element && a11y) {
@@ -91,6 +105,21 @@ const jumper = () => {
     callback = options.callback                       // "undefined" is a suitable default, and won't be called
     easing = options.easing || easeInOutQuad
     a11y = options.a11y || false
+
+     // resolve container
+    switch (typeof options.container) {
+      case 'object':
+        // we assume container is an HTML element (Node)
+        container = options.container
+        break
+
+      case 'string':
+        container = document.querySelector(options.container)
+        break
+
+      default:
+        container = window
+    }
 
     // cache starting position
     start = location()
